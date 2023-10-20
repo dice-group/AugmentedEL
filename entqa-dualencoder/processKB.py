@@ -65,8 +65,6 @@ def processKB(data,batch_size,model,device):
             entity_embeds=[]
             masks=[]
         ind+=1
-        if len(embeddings)>1000:
-            break
     if len(entity_embeds) > 0:
         em = model.encode(entity_token_ids=torch.tensor(entity_embeds, device=device),
                           entity_masks=torch.tensor(masks, device=device))
@@ -80,7 +78,7 @@ def processKB(data,batch_size,model,device):
     print("start indexing")
     index = DenseHNSWFlatIndexer(vector_sz=y_dim)
     index.index_data(vectors)
-    pickle.dump(id_to_index, open("../id-to-index-entqa.pkl", 'wb'))
+    pickle.dump(id_to_index, open("id-to-index-entqa.pkl", 'wb'))
     print(index.index.ntotal)
     faiss.write_index(index.index, "faiss-hswf-entqa")
 
