@@ -65,6 +65,7 @@ def processKB(data,batch_size,model,device):
             entity_embeds=[]
             masks=[]
         ind+=1
+
     if len(entity_embeds) > 0:
         em = model.encode(entity_token_ids=torch.tensor(entity_embeds, device=device),
                           entity_masks=torch.tensor(masks, device=device))
