@@ -262,6 +262,6 @@ class Dataprocessor():
             #source+=candstr
             #print(target)
             #samples.append({"source":target,"target":target})
-        #pickle.dump(samples,open("graph_samples_core50.pkl","wb"))
+        pickle.dump(samples,open("graph_samples_"+dsName+".pkl","wb"))
         return samples
 
