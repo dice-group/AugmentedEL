@@ -1,16 +1,16 @@
-from initialize_model import load_model
+from entqa_dualencoder.initialize_model import load_model
 import torch
 from transformers import BertTokenizer
 import numpy
 import faiss
-import FaissApi as indexApi
+import entqa_dualencoder.FaissApi as indexApi
 import pickle
 
 class PassageRetriever():
-    def __init__(self,maxlen=128,batch_size=10,index_path="faiss-hswf-entqa",id_to_index="id-to-index-entqa.pkl"):
+    def __init__(self,maxlen=128,batch_size=10,index_path="entqa_dualencoder/faiss-hswf-entqa",id_to_index="entqa_dualencoder/id-to-index-entqa.pkl"):
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
-        self.model=load_model("retriever.pt",self.device)
+        self.model=load_model("entqa_dualencoder/retriever.pt",self.device)
         self.tokenizer=BertTokenizer.from_pretrained('bert-large-uncased')
         self.max_len=maxlen
         self.batch_size=batch_size

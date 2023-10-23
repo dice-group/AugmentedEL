@@ -3,7 +3,7 @@ from transformers import BertTokenizer, BertModel, AdamW, \
     get_linear_schedule_with_warmup, get_constant_schedule
 from collections import OrderedDict
 import torch
-from retriever import DualEncoder
+from entqa_dualencoder.retriever import DualEncoder
 
 def load_model(model_path, device, type_loss="sum_log_nce",
                ):

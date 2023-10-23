@@ -275,7 +275,7 @@ class DataprocessorRetrieval(Dataprocessor):
         documentmap = self.groupNifDocumentByRefContext(self.load(path + dsName))
         #passage_len=300
         documents=[]
-        wikidatatowikipedia=pickle.load(open("../wikidata_to_wikipedia.pkl", "rb"))
+        #wikidatatowikipedia=pickle.load(open("wikidata_to_wikipedia.pkl", "rb"))
         for el in documentmap:
             passages=[]
             for an in documentmap[el].nifContent:
@@ -297,6 +297,6 @@ class DataprocessorRetrieval(Dataprocessor):
                             p["entities"].add(an.taIdentRef.replace("http://",""))
             documents.append(passages)
         return documents
-    def process_retrieval_ds(self,dsName,path="../data/wikipedia_nif/"):
+    def process_retrieval_ds(self,dsName,path="data/wikipedia_nif/"):
         documents = self.generatepassages(dsName,path)
         return documents
