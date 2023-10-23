@@ -56,11 +56,10 @@ class PassageRetriever():
                 embeddings.extend(em[0].tolist())
                 passagestokens = []
                 masks = []
-            if len(passagestokens) >0:
-                em = self.model.encode(mention_token_ids=torch.tensor(passagestokens, device=self.device),
-                                  mention_masks=torch.tensor(masks, device=self.device))
-                embeddings.extend(em[0].tolist())
-                passagestokens = []
+        if len(passagestokens) > 0:
+            em = self.model.encode(mention_token_ids=torch.tensor(passagestokens, device=self.device),
+                                   mention_masks=torch.tensor(masks, device=self.device))
+            embeddings.extend(em[0].tolist())
         return embeddings
     def search_index(self, candidate_encodings,k):
         candidates=numpy.array(candidate_encodings,dtype=numpy.float32)
@@ -80,9 +79,7 @@ class PassageRetriever():
         found=self.search_index(passage_embeddings,k)
         return found
 
-retriever=PassageRetriever()
-results=retriever.search_for_passages([{"text":"Who is president of the US?","topic":"presidents"},{"text":"Who is president of the Germany?","topic":"presidents"}])
-print(results)
+
 
 
 

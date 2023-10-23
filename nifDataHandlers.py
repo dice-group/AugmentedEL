@@ -5,8 +5,8 @@ sys.path.append(os.path.dirname(SCRIPT_DIR))
 from getContextMentionIds import getmentioncontext
 from nif import NIFDocument
 import pickle
-redirects=pickle.load(open("data/redirects.sav","rb"))
-know_entities=pickle.load(open("data/known_entities.sav","rb"))
+#redirects=pickle.load(open("data/redirects.sav","rb"))
+#know_entities=pickle.load(open("data/known_entities.sav","rb"))
 import torch
 from torch.utils.data import Dataset
 import requests
@@ -108,6 +108,9 @@ class Dataprocessor():
         with open(path_to_ds, 'r', encoding='utf-8') as file:
             doc = NIFDocument.nifStringToNifDocument(file.read())
         return doc
+
+
+
 
     def generate_seq_to_seq_sample(self,dsName,cand_file,path="data/nifData/"):
         candidates=pickle.load(open(cand_file,"rb"))
@@ -265,3 +268,35 @@ class Dataprocessor():
         pickle.dump(samples,open("graph_samples_"+dsName+".pkl","wb"))
         return samples
 
+class DataprocessorRetrieval(Dataprocessor):
+    def __init__(self, tokenizer, args):
+        super().__init__(tokenizer, args)
+    def generatepassages(self,dsName,path):
+        documentmap = self.groupNifDocumentByRefContext(self.load(path + dsName))
+        #passage_len=300
+        documents=[]
+        wikidatatowikipedia=pickle.load(open("../wikidata_to_wikipedia.pkl", "rb"))
+        for el in documentmap:
+            passages=[]
+            for an in documentmap[el].nifContent:
+                if an.is_string is not None:
+                    words=an.is_string.split(" ")
+                    for i in range(0,len(words)//15+1):
+                        cov_start=" ".join(words[0:i*15])
+                        cov_end = " ".join(words[0:i*15+30])
+                        start_idx=len(cov_start)
+                        end_idx=len(cov_end)
+
+                        passage_list=words[i*15:i*15+30]
+                        passage_text=" ".join(passage_list)
+                        passages.append({"text":passage_text,"start":start_idx,"end":end_idx,"entities":set()})
+            for an in documentmap[el].nifContent:
+                if an.taIdentRef is not None and not "notInWiki"in an.taIdentRef:
+                    for p in passages:
+                        if p["start"]<=int(an.begin_index)<=p["end"] or p["start"]<=int(an.end_index)-1<=p["end"]:
+                            p["entities"].add(an.taIdentRef.replace("http://",""))
+            documents.append(passages)
+        return documents
+    def process_retrieval_ds(self,dsName,path="../data/wikipedia_nif/"):
+        documents = self.generatepassages(dsName,path)
+        return documents
