@@ -1,13 +1,13 @@
 from nifDataHandlers import DataprocessorRetrieval
 from transformers import BertTokenizer
 from Passageretriever import PassageRetriever
-import pickle
+
 tokenizer=BertTokenizer.from_pretrained('bert-large-uncased')
 ds=DataprocessorRetrieval(tokenizer,{})
 
 retriever=PassageRetriever()
 
-pickle.load(open("../wikidata_to_wikipedia.pkl","rb"))
+#pickle.load(open("../wikidata_to_wikipedia.pkl","rb"))
 
 dataset_names = ["ACE2004"]
 dataset_names.append("aida_testa")
