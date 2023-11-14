@@ -30,13 +30,12 @@ def exact_match_score(prediction, ground_truth):
     return normalize_answer(prediction) == normalize_answer(ground_truth)
 def ems(prediction, ground_truths):
     return max([exact_match_score(prediction, gt) for gt in ground_truths])
-def evaluate(model, dataset, tokenizer, collator, opt,device):
+def evaluate(model, dataset, tokenizer, collator, params,device):
     sampler = SequentialSampler(dataset)
     dataloader = DataLoader(dataset,
         sampler=sampler,
-        batch_size=opt.per_gpu_batch_size,
+        batch_size=params["per_gpu_batch_size"],
         drop_last=False,
-        num_workers=10,
         collate_fn=collator
     )
     model.eval()
