@@ -44,7 +44,7 @@ def evaluate(model, dataset, tokenizer, collator, params,device):
     model = model.module if hasattr(model, "module") else model
     with torch.no_grad():
         for i, batch in enumerate(dataloader):
-            (idx, _, _, context_ids, context_mask) = batch
+            (_, _, context_ids, context_mask,target) = batch
 
             outputs = model.generate(
                 input_ids=context_ids.to(device),
@@ -54,7 +54,7 @@ def evaluate(model, dataset, tokenizer, collator, params,device):
 
             for k, o in enumerate(outputs):
                 ans = tokenizer.decode(o, skip_special_tokens=True)
-                gold = dataset.get_example(idx[k])['answers']
+                gold = target
                 score = ems(ans, gold)
                 total += 1
                 exactmatch.append(score)
@@ -88,7 +88,7 @@ def train(rank,model, optimizer, scheduler, step, train_dataset, eval_dataset, p
         epoch += 1
         for batch in tqdm(train_dataloader):
             step += 1
-            (labels, _, context_ids, context_mask) = batch
+            (labels, _, context_ids, context_mask,_) = batch
 
             train_loss = model(
                 input_ids=context_ids.to(device),

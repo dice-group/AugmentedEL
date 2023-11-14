@@ -49,7 +49,7 @@ class Collator():
                     +self.data[cand]["abstract"] for cand in example['candidates']]
         text_passages = [append_candidates(example) for example in batch]
         passage_ids, passage_masks = self.encode_passages(text_passages)
-        return (target_ids, target_mask, passage_ids, passage_masks)
+        return (target_ids, target_mask, passage_ids, passage_masks,target)
 
 '''
 parser = Fusion_In_Decoder_Parser()
