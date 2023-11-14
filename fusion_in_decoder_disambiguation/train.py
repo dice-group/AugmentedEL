@@ -36,7 +36,7 @@ def evaluate(model, dataset, tokenizer, collator, params,device):
         sampler=sampler,
         batch_size=params["per_gpu_batch_size"],
         drop_last=False,
-        collate_fn=collator
+        collate_fn=collator.collate
     )
     model.eval()
     total = 0
