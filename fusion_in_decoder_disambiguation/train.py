@@ -30,7 +30,7 @@ def exact_match_score(prediction, ground_truth):
     return normalize_answer(prediction) == normalize_answer(ground_truth)
 def ems(prediction, ground_truths):
     return max([exact_match_score(prediction, gt) for gt in ground_truths])
-def evaluate(model, dataset, tokenizer, collator, opt):
+def evaluate(model, dataset, tokenizer, collator, opt,device):
     sampler = SequentialSampler(dataset)
     dataloader = DataLoader(dataset,
         sampler=sampler,
@@ -48,8 +48,8 @@ def evaluate(model, dataset, tokenizer, collator, opt):
             (idx, _, _, context_ids, context_mask) = batch
 
             outputs = model.generate(
-                input_ids=context_ids.cuda(),
-                attention_mask=context_mask.cuda(),
+                input_ids=context_ids.to(device),
+                attention_mask=context_mask.to(device),
                 max_length=50
             )
 
@@ -92,9 +92,9 @@ def train(rank,model, optimizer, scheduler, step, train_dataset, eval_dataset, p
             (labels, _, context_ids, context_mask) = batch
 
             train_loss = model(
-                input_ids=context_ids.cuda(),
-                attention_mask=context_mask.cuda(),
-                labels=labels.cuda(),
+                input_ids=context_ids.to(device),
+                attention_mask=context_mask.to(device),
+                labels=labels.to(device),
                 return_dict=False
             )[0]
 
@@ -110,7 +110,7 @@ def train(rank,model, optimizer, scheduler, step, train_dataset, eval_dataset, p
             curr_loss += train_loss.item()
 
             if step % params["eval_freq"] == 0:
-                dev_em = evaluate(model, eval_dataset, tokenizer, collator, params)
+                dev_em = evaluate(model, eval_dataset, tokenizer, collator, params,device)
                 model.train()
                 if params["is_main"]:
                     if dev_em > best_dev_em:
