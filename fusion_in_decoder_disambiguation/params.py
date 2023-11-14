@@ -68,9 +68,9 @@ class Fusion_In_Decoder_Parser(argparse.ArgumentParser):
         parser.add_argument('--eval_data', type=str, default='none', help='path of eval data')
         parser.add_argument('--model_size', type=str, default='base')
         parser.add_argument('--use_checkpoint', action='store_true', help='use checkpoint in the encoder')
-        parser.add_argument('--text_maxlength', type=int, default=200,
+        parser.add_argument('--text_maxlength', type=int, default=50,
                         help='maximum number of tokens in text segments (question+passage)')
-        parser.add_argument('--answer_maxlength', type=int, default=-1,
+        parser.add_argument('--answer_maxlength', type=int, default=50,
                         help='maximum number of tokens used to train the model, no truncation if -1')
         parser.add_argument('--no_title', action='store_true',
                         help='article titles not included in passages')
@@ -82,7 +82,7 @@ class Fusion_In_Decoder_Parser(argparse.ArgumentParser):
         parser = self.add_argument_group("Model Arguments")
         # basic parameters
         parser.add_argument('--name', type=str, default='experiment_name', help='name of the experiment')
-        parser.add_argument('--checkpoint_dir', type=str, default='./checkpoint/', help='models are saved here')
+        parser.add_argument('--checkpoint_dir', type=str, default='checkpoint/', help='models are saved here')
         parser.add_argument('--model_path', type=str, default='none', help='path for retraining')
 
         # dataset parameters

@@ -130,24 +130,30 @@ def set_optim(params, model):
 
 
 def average_main(x, params):
-    if not params["is_distributed"]:
+
+    '''if not params["is_distributed"]:
         return x
     if params["world_size"] > 1:
         dist.reduce(x, 0, op=dist.ReduceOp.SUM)
         if params["is_main"]:
             x = x / params["world_size"]
+    '''
     return x
 
 
 def sum_main(x, params):
+    '''
     if not params["is_distributed"]:
         return x
     if params["world_size"] > 1:
         dist.reduce(x, 0, op=dist.ReduceOp.SUM)
+    '''
     return x
 
 
 def weighted_average(x, count, params):
+    return x, count
+    '''
     if not params["is_distributed"]:
         return x, count
     t_loss = torch.tensor([x * count], device=params["device"])
@@ -155,6 +161,7 @@ def weighted_average(x, count, params):
     t_loss = sum_main(t_loss, params)
     t_total = sum_main(t_total, params)
     return (t_loss / t_total).item(), t_total.item()
+    '''
 
 
 def write_output(glob_path, output_path):

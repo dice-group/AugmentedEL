@@ -5,25 +5,81 @@ import util
 import torch.multiprocessing as mp
 import model
 import transformers
+from Collator import Collator
 from params import Fusion_In_Decoder_Parser
-def train(model, optimizer, scheduler, step, train_dataset, eval_dataset, params, collator, best_dev_em, checkpoint_path,rank,world_size):
-    model.to(rank)
-    if params["is_main"]:
-        try:
-            tb_logger = torch.utils.tensorboard.SummaryWriter(Path(params["checkpoint_dir"])/params["name"])
-        except:
-            tb_logger = None
-            print('Tensorboard is not available.')
+import regex
+import string
+import numpy as np
+import pickle
+from tqdm import tqdm
+def normalize_answer(s):
+    def remove_articles(text):
+        return regex.sub(r'\b(a|an|the)\b', ' ', text)
 
-    torch.manual_seed(params["global_rank"].global_rank + params["seed"]) #different seed for different sampling depending on global_rank
+    def white_space_fix(text):
+        return ' '.join(text.split())
+
+    def remove_punc(text):
+        exclude = set(string.punctuation)
+        return ''.join(ch for ch in text if ch not in exclude)
+
+    def lower(text):
+        return text.lower()
+
+def exact_match_score(prediction, ground_truth):
+    return normalize_answer(prediction) == normalize_answer(ground_truth)
+def ems(prediction, ground_truths):
+    return max([exact_match_score(prediction, gt) for gt in ground_truths])
+def evaluate(model, dataset, tokenizer, collator, opt):
+    sampler = SequentialSampler(dataset)
+    dataloader = DataLoader(dataset,
+        sampler=sampler,
+        batch_size=opt.per_gpu_batch_size,
+        drop_last=False,
+        num_workers=10,
+        collate_fn=collator
+    )
+    model.eval()
+    total = 0
+    exactmatch = []
+    model = model.module if hasattr(model, "module") else model
+    with torch.no_grad():
+        for i, batch in enumerate(dataloader):
+            (idx, _, _, context_ids, context_mask) = batch
+
+            outputs = model.generate(
+                input_ids=context_ids.cuda(),
+                attention_mask=context_mask.cuda(),
+                max_length=50
+            )
+
+            for k, o in enumerate(outputs):
+                ans = tokenizer.decode(o, skip_special_tokens=True)
+                gold = dataset.get_example(idx[k])['answers']
+                score = ems(ans, gold)
+                total += 1
+                exactmatch.append(score)
+
+    exactmatch, total = util.weighted_average(np.mean(exactmatch), total, opt)
+    return exactmatch
+
+def train(rank,model, optimizer, scheduler, step, train_dataset, eval_dataset, params, collator, best_dev_em, checkpoint_path):
+    model.to(device)
+    #if params["is_main"]:
+
+    tb_logger = True
+    #else:
+    #    tb_logger = False
+    rank=device
+    torch.manual_seed(0 + params["seed"]) #different seed for different sampling depending on global_rank
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(
         train_dataset,
         sampler=train_sampler,
-        batch_size=opt.per_gpu_batch_size,
+        batch_size=params["per_gpu_batch_size"],
         drop_last=True,
-        num_workers=10,
-        collate_fn=collator
+        #num_workers=10,
+        collate_fn=collator.collate
     )
 
     loss, curr_loss = 0.0, 0.0
@@ -31,14 +87,15 @@ def train(model, optimizer, scheduler, step, train_dataset, eval_dataset, params
     model.train()
     while step < params["total_steps"]:
         epoch += 1
-        for i, batch in enumerate(train_dataloader):
+        for batch in tqdm(train_dataloader):
             step += 1
-            (idx, labels, _, context_ids, context_mask) = batch
+            (labels, _, context_ids, context_mask) = batch
 
             train_loss = model(
                 input_ids=context_ids.cuda(),
                 attention_mask=context_mask.cuda(),
-                labels=labels.cuda()
+                labels=labels.cuda(),
+                return_dict=False
             )[0]
 
             train_loss.backward()
@@ -65,19 +122,21 @@ def train(model, optimizer, scheduler, step, train_dataset, eval_dataset, params
                     log += f"evaluation: {100*dev_em:.2f}EM |"
                     log += f"lr: {scheduler.get_last_lr()[0]:.5f}"
                     print(log)
-                    if tb_logger is not None:
-                        tb_logger.add_scalar("Evaluation", dev_em, step)
-                        tb_logger.add_scalar("Training", curr_loss / (params["eval_freq"]), step)
+                    if tb_logger:
+                        print("Evaluation", dev_em, step)
+                        print("Training", curr_loss / (params["eval_freq"]), step)
                     curr_loss = 0.
-
-            if params["is_main"] and step % params["save_freq"] == 0:
+            if step % params["save_freq"] == 0:
+            #if params["is_main"] and step % params["save_freq"] == 0:
                 util.save(model, optimizer, scheduler, step, best_dev_em,
                           params, checkpoint_path, f"step-{step}")
             if step >params["total_steps"]:
                 break
 
 if __name__ == '__main__':
-    parser = Fusion_In_Decoder_Parser(add_model_args=True, add_training_args=True)
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu")
+    parser = Fusion_In_Decoder_Parser()
     parser.add_reader_options()
     parser.add_optim_options()
     parser.add_eval_options()
@@ -95,12 +154,17 @@ if __name__ == '__main__':
     optimizer, scheduler = util.set_optim(params, model)
     step, best_dev_em = 0, 0.0
     # load data
+    train_samples=pickle.load(open("../fusionInDecoding/dataaida_train.pkl","rb"))
+    test_samples = pickle.load(open("../fusionInDecoding/dataaida_testa.pkl", "rb"))
     tokenizer = transformers.T5Tokenizer.from_pretrained(model_name)
-    # suppose we have 3 gpus
     world_size = torch.cuda.device_count()
     print(world_size)
+    collator=Collator(tokenizer, params)
+    train(0,model,optimizer,scheduler,step,train_samples,test_samples,params,collator,best_dev_em,params["checkpoint_dir"])
+    '''
     mp.spawn(
         train,
-        args=(world_size,10),
+        args=(model,optimizer,scheduler,step,train_samples,test_samples,params,collator,best_dev_em,params["checkpoint_dir"]),
         nprocs=world_size
     )
+    '''
