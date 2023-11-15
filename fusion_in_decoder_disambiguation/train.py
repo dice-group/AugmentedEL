@@ -43,7 +43,7 @@ def evaluate(model, dataset, tokenizer, collator, params,device):
     exactmatch = []
     model = model.module if hasattr(model, "module") else model
     with torch.no_grad():
-        for i, batch in enumerate(dataloader):
+        for batch in tqdm(dataloader):
             (_, _, context_ids, context_mask,target) = batch
 
             outputs = model.generate(
