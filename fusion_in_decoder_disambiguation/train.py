@@ -59,7 +59,7 @@ def evaluate(model, dataset, tokenizer, collator, params,device):
                 total += 1
                 exactmatch.append(score)
 
-    exactmatch, total = util.weighted_average(np.mean(exactmatch), total, opt)
+    exactmatch, total = util.weighted_average(np.mean(exactmatch), total, params)
     return exactmatch
 
 def train(rank,model, optimizer, scheduler, step, train_dataset, eval_dataset, params, collator, best_dev_em, checkpoint_path):
