@@ -111,20 +111,19 @@ def train(rank,model, optimizer, scheduler, step, train_dataset, eval_dataset, p
             if step % params["eval_freq"] == 0:
                 dev_em = evaluate(model, eval_dataset, tokenizer, collator, params,device)
                 model.train()
-                if params["is_main"]:
-                    if dev_em > best_dev_em:
-                        best_dev_em = dev_em
-                        util.save(model, optimizer, scheduler, step, best_dev_em,
+                if dev_em > best_dev_em:
+                    best_dev_em = dev_em
+                    util.save(model, optimizer, scheduler, step, best_dev_em,
                                 params, checkpoint_path, 'best_dev')
-                    log = f"{step} / {params['total_steps']} |"
-                    log += f"train: {curr_loss/params['eval_freq']:.3f} |"
-                    log += f"evaluation: {100*dev_em:.2f}EM |"
-                    log += f"lr: {scheduler.get_last_lr()[0]:.5f}"
-                    print(log)
-                    if tb_logger:
-                        print("Evaluation", dev_em, step)
-                        print("Training", curr_loss / (params["eval_freq"]), step)
-                    curr_loss = 0.
+                log = f"{step} / {params['total_steps']} |"
+                log += f"train: {curr_loss/params['eval_freq']:.3f} |"
+                log += f"evaluation: {100*dev_em:.2f}EM |"
+                log += f"lr: {scheduler.get_last_lr()[0]:.5f}"
+                print(log)
+                if tb_logger:
+                    print("Evaluation", dev_em, step)
+                    print("Training", curr_loss / (params["eval_freq"]), step)
+                curr_loss = 0.
             if step % params["save_freq"] == 0:
             #if params["is_main"] and step % params["save_freq"] == 0:
                 util.save(model, optimizer, scheduler, step, best_dev_em,
