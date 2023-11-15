@@ -68,9 +68,9 @@ class Fusion_In_Decoder_Parser(argparse.ArgumentParser):
         parser.add_argument('--eval_data', type=str, default='none', help='path of eval data')
         parser.add_argument('--model_size', type=str, default='base')
         parser.add_argument('--use_checkpoint', action='store_true', help='use checkpoint in the encoder')
-        parser.add_argument('--text_maxlength', type=int, default=50,
+        parser.add_argument('--text_maxlength', type=int, default=100,
                         help='maximum number of tokens in text segments (question+passage)')
-        parser.add_argument('--answer_maxlength', type=int, default=50,
+        parser.add_argument('--answer_maxlength', type=int, default=150,
                         help='maximum number of tokens used to train the model, no truncation if -1')
         parser.add_argument('--no_title', action='store_true',
                         help='article titles not included in passages')

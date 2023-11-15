@@ -41,13 +41,24 @@ class Collator():
         target_ids = target["input_ids"]
         target_mask = target["attention_mask"].bool()
         target_ids = target_ids.masked_fill(~target_mask, -100)
-
+        '''
         def append_candidates(example):
             if example['candidates'] is None or len(example['candidates'] )== 0:
                 return [example['source']]
             return [example['source'] + " " + "title: "+self.data[cand]["title"]+" abstract: "
                     +self.data[cand]["abstract"] for cand in example['candidates']]
-        text_passages = [append_candidates(example) for example in batch]
+        '''
+
+        def append_candidates(example):
+            if example['candidates'] is None or len(example['candidates']) == 0:
+                return [example['source']]
+            candidates= ["id: "+cand+" title: " + self.data[cand]["title"] + " abstract: "
+                    + self.data[cand]["abstract"][0:300] for cand in example['candidates']]
+            candidates.insert(0,example['source'])
+            return candidates
+        #text_passages = [batch["source"]]
+        text_passages=[append_candidates(example) for example in batch]
+        #text_passages.extend(candidates)
         passage_ids, passage_masks = self.encode_passages(text_passages)
         return (target_ids, target_mask, passage_ids, passage_masks,target)
 
@@ -64,5 +75,5 @@ params = args.__dict__
 tokenizer = transformers.T5Tokenizer.from_pretrained("t5-base")
 samples=pickle.load(open("../fusionInDecoding/dataaida_train.pkl","rb"))
 c=Collator(tokenizer,params)
-c.__call__([samples[0]])
+c.collate([samples[0]])
 '''
