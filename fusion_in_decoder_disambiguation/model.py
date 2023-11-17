@@ -135,6 +135,7 @@ class EncoderWrapper(torch.nn.Module):
 
         self.encoder = encoder
         self.main_input_name = encoder.main_input_name
+        self.embed_tokens = encoder.embed_tokens
         apply_checkpoint_wrapper(self.encoder, use_checkpoint)
 
     def forward(self, input_ids=None, attention_mask=None, **kwargs,):
