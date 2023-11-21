@@ -181,7 +181,7 @@ if __name__ == '__main__':
     print(world_size)
     collator=Collator(tokenizer, params)
     dist.init_process_group("nccl", rank=WORLD_RANK, world_size=WORLD_SIZE)
-    train(0,model,optimizer,scheduler,step,train_samples,test_samples,params,collator,best_dev_em,params["checkpoint_dir"])
+    train(model,optimizer,scheduler,step,train_samples,test_samples,params,collator,best_dev_em,params["checkpoint_dir"])
     '''
     mp.spawn(
         train,
