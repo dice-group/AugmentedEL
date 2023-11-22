@@ -150,6 +150,7 @@ def train(model, optimizer, scheduler, step, train_dataset, eval_dataset, params
             if step >params["total_steps"]:
                 dist.barrier()
                 break
+        dist.barrier()
 
 if __name__ == '__main__':
     '''
