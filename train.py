@@ -123,7 +123,7 @@ def main():
         # Initialize our Trainer
         trainer = Trainer(
             model=model,
-            args=TrainingArguments(warmup_ratio=params["warmup_ratio"],label_smoothing_factor=params["label_smoothing"],output_dir=params["output_dir"],num_train_epochs=50),
+            args=TrainingArguments(warmup_ratio=params["warmup_ratio"],label_smoothing_factor=params["label_smoothing"],output_dir=params["output_dir"],num_train_epochs=50,save_total_limit=10),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             compute_metrics=build_compute_metrics_fn(),
