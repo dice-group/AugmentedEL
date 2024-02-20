@@ -1,4 +1,5 @@
 from JointModel.data_processing import Kilt_joint_el as data_processor
+from JointModel.data_processing import Aida_joint_el as data_processor_aida
 from JointModel.data_processing import ListDataset
 from JointModel.parameters import JointParser
 from typing import Callable, Dict, List, Optional, Tuple, Iterable
@@ -48,12 +49,15 @@ def main():
         params["tokenizer_name"] if params["tokenizer_name"] is not None else params["model_name"],
         cache_dir=params["cache_dir"],
     )
-    model = AutoModelForSeq2SeqLM.from_pretrained(
-        params["model_name"],
-        from_tf=".ckpt" in params["model_name"],
-        config=config,
-        cache_dir=params["cache_dir"],
-    )
+    if params["train_from_checkpoint"]:
+        model=AutoModelForSeq2SeqLM.from_pretrained(params["checkpoint_path"],config=config,cache_dir=params["cache_dir"])
+    else:
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            params["model_name"],
+            from_tf=".ckpt" in params["model_name"],
+            config=config,
+            cache_dir=params["cache_dir"],
+        )
 
     # use task specific params
     # use_task_specific_params(model, data_args.task)
@@ -104,12 +108,12 @@ def main():
         # compute_metrics_fn = summarization_metrics if "summarization" in task_name else translation_metrics
         compute_metrics_fn = exact_match_metrics
         return compute_metrics_fn
-    dg=data_processor(tokenizer, params)
+    dg=data_processor_aida(tokenizer, params)
 
     # Get datasets
-    train_dataset = ListDataset(dg.process_training_ds("../data/KILT/kilt_train/"))
+    train_dataset = ListDataset(dg.process_training_ds(params["training_ds"]))
 
-    eval_dataset = ListDataset(dg.process_training_ds("../data/KILT/kilt_test/"))
+    eval_dataset = ListDataset(dg.process_training_ds(params["eval_ds"]))
     '''
     if training_args.do_eval:
         eval_dataset = ListDataset(load_and_cache_examples(model_args, tokenizer, evaluate=True))
@@ -121,7 +125,7 @@ def main():
         # Initialize our Trainer
         trainer = Trainer(
             model=model,
-            args=TrainingArguments(warmup_ratio=params["warmup_ratio"],remove_unused_columns=False,label_smoothing_factor=params["label_smoothing"],output_dir=params["output_dir"],num_train_epochs=50),
+            args=TrainingArguments(warmup_ratio=params["warmup_ratio"],remove_unused_columns=False,label_smoothing_factor=params["label_smoothing"],output_dir=params["output_dir"],num_train_epochs=20,save_total_limit=10),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             data_collator=dg,

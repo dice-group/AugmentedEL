@@ -80,7 +80,7 @@ class JointParser(argparse.ArgumentParser):
 
         parser.add_argument(
             "--model_name",
-            default="t5-large",
+            default="t5-base",
             type=str,
             help="path or name of model",
         )
@@ -134,14 +134,26 @@ class JointParser(argparse.ArgumentParser):
             help="Whether to train a model",
         )
         parser.add_argument(
+            "--train_from_checkpoint",
+            default=True,
+            type=bool,
+            help="Whether to train from a model checkpoint",
+        )
+        parser.add_argument(
+            "--checkpoint_path",
+            default="checkpoint-241500",
+            type=str,
+            help="path to checkpoint",
+        )
+        parser.add_argument(
             "--training_ds",
-            default="../qa-data/LCQUAD/train-with-triples.json",
+            default="../data/wikipedia_nif/aida_train",
             type=str,
             help="Path to trainig data",
         )
         parser.add_argument(
             "--eval_ds",
-            default="../qa-data/LCQUAD/test-with-triples.json",
+            default="../data/wikipedia_nif/aida_testa",
             type=str,
             help="Path to training data",
         )
