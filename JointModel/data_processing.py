@@ -105,8 +105,9 @@ class Kilt_joint_el(Dataprocessor_basic):
             for el in ents:
                 target_ner=target_ner.replace("{ "+el[0]+" } [ "+el[1]+" ]","[START_ENT] "+el[0]+" [END_ENT]")
                 target_el = target_el.replace("{ " + el[0] + " }","[START_ENT] " + el[0] + " [END_ENT]")
-            samples.append({"input":src_ner,"label":target_ner})
-            samples.append({"input": target_ner+"[SEP]target_el", "label": target_el})
+            #samples.append({"input":src_ner,"label":target_ner})
+            #samples.append({"input": target_ner+"[SEP]target_el", "label": target_el})
+            samples.append({"input": src_ner + "[SEP]target_el", "label": target_el})
         input.close()
         output.close()
         return samples
