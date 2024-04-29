@@ -108,7 +108,7 @@ def main():
         # compute_metrics_fn = summarization_metrics if "summarization" in task_name else translation_metrics
         compute_metrics_fn = exact_match_metrics
         return compute_metrics_fn
-    dg=data_processor(tokenizer, params)
+    dg=data_processor_aida(tokenizer, params)
 
     # Get datasets
     train_dataset = ListDataset(dg.process_training_ds(params["training_ds"]))

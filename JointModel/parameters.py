@@ -147,7 +147,7 @@ class JointParser(argparse.ArgumentParser):
         )
         parser.add_argument(
             "--training_ds",
-            default="../data/KILT/kilt_train/",
+            default="../data/wikipedia_nif/aida_train",
             type=str,
             help="Path to trainig data",
         )

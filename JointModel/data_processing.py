@@ -247,12 +247,18 @@ class Aida_joint_el(Dataprocessor_basic):
                                                + target_splits_ner[sp_id][int(an.end_index) - reduce + offsets[sp_id]:
                                                                           len(target_splits_ner[sp_id])]
                     offsets[sp_id] += len(ellink)
+            '''
             for el in splits:
                 sample = {"input": el+"[SEP]target_ner", "label": target_splits_ner[splits.index(el)]}
                 samples.append(sample)
             for el in target_splits_ner:
                 sample = {"input": el + "[SEP]target_el", "label": target_splits_el[target_splits_ner.index(el)]}
                 samples.append(sample)
+            '''
+            for el in splits:
+                sample = {"input": el+"[SEP]target_el", "label": target_splits_el[target_splits_ner.index(target_splits_ner[splits.index(el)])]}
+                samples.append(sample)
+
 
         return samples
 
