@@ -96,7 +96,7 @@ tokenizers==0.14.1
 torch==2.3.0
 torchaudio==2.3.0
 torchvision==0.18.0
-tqdm==4.66.1
+tqdm==4.66.3
 transformer-smaller-training-vocab==0.4.0
 transformers==4.34.0
 triton==2.3.0
