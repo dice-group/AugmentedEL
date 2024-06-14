@@ -150,7 +150,7 @@ class Aida_joint_el(Dataprocessor_basic):
         return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
     def read_ds_to_list(self,path_to_ds):
         # candidate_file=json.load(open("../candiatedata/"+dsName+"_candidates.json"))
-        wikipedia_data = pickle.load(open("../wikipedia_data.pkl", "rb"))
+        wikipedia_data = pickle.load(open("../data/wikipedia_data.pkl", "rb"))
         # labels=pickle.load(open("labels_full_updated.sav","rb"))
         documentmap = self.groupNifDocumentByRefContext(self.load(path_to_ds))
         samples = []

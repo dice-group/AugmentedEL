@@ -129,7 +129,7 @@ class JointParser(argparse.ArgumentParser):
         )
         parser.add_argument(
             "--output_dir",
-            default="out-combined-el",
+            default="joint_model/e2e_aida",
             type=str,
             help="Whether to train a model",
         )
@@ -141,7 +141,7 @@ class JointParser(argparse.ArgumentParser):
         )
         parser.add_argument(
             "--checkpoint_path",
-            default="checkpoint-241500",
+            default="../e2emodel/checkpoint-1850000",
             type=str,
             help="path to checkpoint",
         )

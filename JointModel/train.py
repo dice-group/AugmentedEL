@@ -1,7 +1,7 @@
-from JointModel.data_processing import Kilt_joint_el as data_processor
-from JointModel.data_processing import Aida_joint_el as data_processor_aida
-from JointModel.data_processing import ListDataset
-from JointModel.parameters import JointParser
+from data_processing import Kilt_joint_el as data_processor
+from data_processing import Aida_joint_el as data_processor_aida
+from data_processing import ListDataset
+from parameters import JointParser
 from typing import Callable, Dict, List, Optional, Tuple, Iterable
 import numpy as np
 import os
@@ -125,7 +125,7 @@ def main():
         # Initialize our Trainer
         trainer = Trainer(
             model=model,
-            args=TrainingArguments(warmup_ratio=params["warmup_ratio"],remove_unused_columns=False,label_smoothing_factor=params["label_smoothing"],output_dir=params["output_dir"],num_train_epochs=20,save_total_limit=10),
+            args=TrainingArguments(warmup_ratio=params["warmup_ratio"],remove_unused_columns=False,label_smoothing_factor=params["label_smoothing"],output_dir=params["output_dir"],num_train_epochs=125,save_total_limit=10),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             data_collator=dg,

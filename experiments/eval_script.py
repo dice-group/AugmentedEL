@@ -5,18 +5,20 @@ import torch
 import pickle
 import requests
 import json
+from LLMservice import Local_service
 #from GENRE.genre_disamb import GenreDisamb
-from prefix_trie import PrefixTrie
 class EL_model():
-    def __init__(self,model_path,max_seq_length):
+    def __init__(self,model_path,max_seq_length,apply_llm_ner=True):
         self.model = T5ForConditionalGeneration.from_pretrained(model_path)
         self.tokenizer = AutoTokenizer.from_pretrained(
             "t5-base",)
         self.max_seq_length=max_seq_length
-        self.device="cuda:0" if torch.cuda.is_available() else "cpu"
+        self.lm_ws=Local_service("llama2:70b")
+        self.device="cuda:1" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
+        self.apply_llm_ner=apply_llm_ner
         #self.genre_disamb=GenreDisamb()
-        self.trie=pickle.load(open("entity_trie_u.pkl","rb"))
+        #self.trie=pickle.load(open("../data/entity_trie_u.pkl","rb"))
     def _split(self, a, n):
         k, m = divmod(len(a), n)
         return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
@@ -142,18 +144,22 @@ class EL_model():
         out_sent = self.tokenizer.decode(out[0], skip_special_tokens=True)
 
         return out_sent
-    def expand(self,ner_sequence):
+    def expand(self,ner_sequence,expand_end_to_end=False):
         spans=re.findall(r"\[START_ENT\] ([^\]]+) \[END_ENT\]",ner_sequence)
         span_seq="\""+ ",".join(spans)+"\""
         span_to_exp={}
         for sp in spans:
             span_to_exp[sp]=None
-        data = {"sentence": "\"" + ner_sequence + "\"","spans":span_seq}
-        ans = requests.post("http://lm-test-dice.cs.upb.de:5000/annotate_ner/", data=json.dumps(data))
-        jout=ans.content.decode()
+        #data = {"sentence": "\"" + ner_sequence + "\"","spans":span_seq}
+        #ans = requests.post("http://localhost:6000/annotate_ner/", data=json.dumps(data))
+        jout = self.lm_ws.run_expansion_request(ner_sequence,span_seq)
+        print(jout)
+        #jout=ans.content.decode()
         #jstring=str(json.loads(jout))
         jout=jout.replace("\n","")
-        pattern=r'"span": "([^"]+)","entity_name": "([^"]+)"'
+        #pattern=r'"span": "([^"]+)","entity_name": "([^"]+)"'
+        print(jout)
+        pattern = r'"span":\s?"([^"]+)",\s?"entity_name":\s?"([^"]+)"'
         result=re.search(pattern,jout)
         expansions=[]
         already_ext=set()
@@ -161,6 +167,8 @@ class EL_model():
             #print(result)
             span=result.group(1)
             ent=result.group(2)
+            print(span)
+            print(ent)
             if span!=result and not span in already_ext:
                 already_ext.add(span)
                 expansions.append({"span":span,"ent":ent,"annotation":result.group(0)})
@@ -170,6 +178,7 @@ class EL_model():
             span_to_exp[exp["span"]]=exp["ent"]
             #ner_sequence=ner_sequence.replace("[START_ENT] "+exp["span"],"[START_ENT] "+exp["ent"])
         #return ner_sequence,span_to_exp
+        print(span_to_exp)
         return span_to_exp
         '''
         try:
@@ -193,7 +202,59 @@ class EL_model():
         else:
             splits = [seq]
         #Note: batching might be more efficient here instead of sending sequence one by one to the model
-        predictions=[self.predict("Text to annotate: "+split+"[SEP]target_ner",num_beams=num_beams).replace("Text to annotate: ","") if split!=""else "" for split in splits]
+
+        if self.apply_llm_ner:
+            llm_out=self.lm_ws.run_ner_request(seq)
+            pattern = r'"([^"]+)"[,\]]'
+            result = re.search(pattern, llm_out)
+            entities = []
+            already_ext = set()
+            while result is not None:
+                # print(result)
+                span = result.group(1)
+                if span != result and not span in already_ext:
+                    already_ext.add(span)
+                    entities.append(span)
+                llm_out = llm_out.replace(result.group(0), "", 1)
+                result = re.search(pattern, llm_out)
+            print(entities)
+            entities.sort(key=len,reverse=True)
+            predictions = [self.predict("Text to annotate: " + split + "[SEP]target_ner", num_beams=num_beams).replace(
+                "Text to annotate: ", "") if split != "" else "" for split in splits]
+            preditions_update=[]
+            for pred_seq in predictions:
+                pred_update=pred_seq
+                last_ind=0
+                if "[START_ENT]"in pred_update:
+                    cur_str=pred_update[last_ind:pred_seq.index("[START_ENT]")]
+                else:
+                    cur_str = pred_update
+
+                i=0
+                updated=True
+                while updated:
+                    while i <len(entities):
+                        if entities[i] in cur_str:
+                            str_up=cur_str.replace(entities[i],"[START_ENT] "+entities[i]+" [END_ENT]")
+                            pred_update=pred_update.replace(cur_str,str_up)
+                            cur_str = pred_update[last_ind:pred_update.index("[START_ENT]",last_ind)]
+                            i=0
+                        else:
+                            i=i+1
+                    ind_up=last_ind+len(cur_str)
+                    if "[END_ENT]" in pred_update[ind_up:]:
+                        last_ind=pred_update.index("[END_ENT]",ind_up)+len("[END_ENT]")
+                        if "[START_ENT]" in pred_update[last_ind:]:
+                            cur_str = pred_update[last_ind:pred_update.index("[START_ENT]",last_ind)]
+                        else:
+                            cur_str = pred_update[last_ind:]
+                    else:
+                        updated=False
+                    i=0
+                preditions_update.append(pred_update)
+            predictions=preditions_update
+        else:
+            predictions=[self.predict("Text to annotate: "+split+"[SEP]target_ner",num_beams=num_beams).replace("Text to annotate: ","") if split!=""else "" for split in splits]
         if join_outputs:
             return ". ".join(predictions)
         else:
@@ -241,6 +302,150 @@ class EL_model():
             expansions=self.expand(joint_ner)
             predictions = [self.predict_with_expansions(split,expansions)  if split != "" else "" for split in ner_out]
         return ". ".join(predictions).replace("Text to annotate:","")
+    def predict_mixed_e2e(self,seq,e2e_model,expand=True):
+        ner_out=e2e_model.predict_el_e2e(seq,False)
+        repl_pattern = r"\[END_ENT\] \[ ([^\]]+) \]"
+        ner_out = [re.sub(repl_pattern, "[END_ENT]", el) for el in ner_out]
+        if not expand:
+            predictions = [self.predict(split + "[SEP]target_el") if split != "" else "" for split in ner_out]
+        else:
+            joint_ner=". ".join(ner_out)
+            expansions=self.expand(joint_ner)
+            predictions = [self.predict_with_expansions(split,expansions)  if split != "" else "" for split in ner_out]
+        return ". ".join(predictions).replace("Text to annotate:","")
+    def predict_el_e2e(self,seq,join_outputs=True,num_beams=1):
+        curr_seq_len = self.tokenizer(seq, return_tensors="pt").input_ids.size(1)
+        num_splits = curr_seq_len // self.max_seq_length
+        if num_splits > 0:
+            sentences = seq.split(". ")
+            splits = []
+            chunks = list(self._split(sentences, num_splits + 1))
+            for chunk in chunks:
+                splits.append(". ".join(chunk))
+            print(splits)
+        else:
+            splits = [seq]
+        #Note: batching might be more efficient here instead of sending sequence one by one to the model
+        predictions=[self.predict("Text to annotate: "+split+"[SEP]target_el",num_beams=num_beams).replace("Text to annotate: ","") if split!=""else "" for split in splits]
+        if join_outputs:
+            return ". ".join(predictions)
+        return predictions
+    def predict_el_e2e_exp(self,seq,join_outputs=True,num_beams=1):
+        full_seq=self.predict_el_e2e(seq)
+
+        repl_pattern=r"\[END_ENT\] \[ ([^\]]+) \]"
+        ner_seq=re.sub(repl_pattern,"[END_ENT]",full_seq)
+        exp_seq=""+ner_seq
+        expansions=self.expand(exp_seq)
+        pattern = r"\[START_ENT\] ([^\]]+) \[END_ENT\]"
+        result = re.search(pattern, exp_seq)
+
+        while result is not None:
+            ent_span=result.group(1)
+            if ent_span in expansions and expansions[ent_span] is not None:
+                exp_seq = exp_seq.replace(result.group(0), expansions[ent_span], 1)
+            else:
+                exp_seq = exp_seq.replace(result.group(0), result.group(1), 1)
+            result = re.search(pattern, exp_seq)
+        print(exp_seq)
+        print(ner_seq)
+        annotated_expansion_sequence=self.predict_el_e2e(exp_seq)
+        pattern = r"\[START_ENT\] ([^\]]+) \[END_ENT\] \[ ([^\]]+) \]"
+        result = re.search(pattern, annotated_expansion_sequence)
+        span_out_to_entity_exp={}
+        while result is not None:
+            span_out_to_entity_exp[result.group(1)]=result.group(2)
+            annotated_expansion_sequence = annotated_expansion_sequence.replace(result.group(0), "", 1)
+            result = re.search(pattern, annotated_expansion_sequence)
+        span_out_to_entity = {}
+        result = re.search(pattern, full_seq)
+        while result is not None:
+            span_out_to_entity[result.group(1)] = result.group(2)
+            full_seq = full_seq.replace(result.group(0), "", 1)
+            result = re.search(pattern, full_seq)
+
+
+        for span in expansions.keys():
+            if expansions[span]!=None:
+                s_key=expansions[span]
+            else:
+                s_key=span
+            if s_key in span_out_to_entity_exp:
+                ner_seq=ner_seq.replace("[START_ENT] "+span+" [END_ENT]","[START_ENT] "+span+" [END_ENT] [ "+span_out_to_entity_exp[s_key]+" ]")
+            elif span in span_out_to_entity:
+                ner_seq=ner_seq.replace("[START_ENT] "+span+" [END_ENT]","[START_ENT] "+span+" [END_ENT] [ "+span_out_to_entity[span]+" ]")
+        return ner_seq
+    def predict_disambiguation_flair_with_ner_expansion(self,seq,original_seq,expand=True):
+        curr_seq_len = self.tokenizer(seq, return_tensors="pt").input_ids.size(1)
+        num_splits = curr_seq_len // self.max_seq_length
+        if num_splits > 0:
+            sentences = seq.split(". ")
+            splits = []
+            chunks = list(self._split(sentences, num_splits + 1))
+            for chunk in chunks:
+                splits.append(". ".join(chunk))
+            print(splits)
+        else:
+            splits = [seq]
+
+        llm_out = self.lm_ws.run_ner_request(original_seq)
+        pattern = r'"([^"]+)"[,\]]'
+        result = re.search(pattern, llm_out)
+        entities = []
+        already_ext = set()
+        while result is not None:
+            # print(result)
+            span = result.group(1)
+            if span != result and not span in already_ext:
+                already_ext.add(span)
+                entities.append(span)
+            llm_out = llm_out.replace(result.group(0), "", 1)
+            result = re.search(pattern, llm_out)
+        print(entities)
+        entities.sort(key=len, reverse=True)
+
+        preditions_update = []
+        for pred_seq in splits:
+            pred_update = pred_seq
+            last_ind = 0
+            if "[START_ENT]" in pred_update:
+                cur_str = pred_update[last_ind:pred_seq.index("[START_ENT]")]
+            else:
+                cur_str = pred_update
+
+            i = 0
+            updated = True
+            while updated:
+                while i < len(entities):
+                    if entities[i] in cur_str:
+                        str_up = cur_str.replace(entities[i], "[START_ENT] " + entities[i] + " [END_ENT]")
+                        pred_update = pred_update.replace(cur_str, str_up)
+                        cur_str = pred_update[last_ind:pred_update.index("[START_ENT]", last_ind)]
+                        i = 0
+                    else:
+                        i = i + 1
+                ind_up = last_ind + len(cur_str)
+                if "[END_ENT]" in pred_update[ind_up:]:
+                    last_ind = pred_update.index("[END_ENT]", ind_up) + len("[END_ENT]")
+                    if "[START_ENT]" in pred_update[last_ind:]:
+                        cur_str = pred_update[last_ind:pred_update.index("[START_ENT]", last_ind)]
+                    else:
+                        cur_str = pred_update[last_ind:]
+                else:
+                    updated = False
+                i = 0
+            preditions_update.append(pred_update)
+        splits = preditions_update
+        new_seq=". ".join(splits)
+        if not expand:
+            predictions = [self.predict(split + "[SEP]target_el") if split != "" else "" for split in splits]
+            out=". ".join(predictions)
+        else:
+            expansions = self.expand(new_seq)
+            predictions = [self.predict_with_expansions(split, expansions) if split != "" else "" for split in splits]
+            out= ". ".join(predictions)
+            #out=self.replace_expansions(seq,output_mod,expansions)
+        return out
     def predict_disambiguation_only(self,seq,expand=True):
         curr_seq_len = self.tokenizer(seq, return_tensors="pt").input_ids.size(1)
         num_splits = curr_seq_len // self.max_seq_length
@@ -259,8 +464,8 @@ class EL_model():
         else:
             expansions = self.expand(seq)
             predictions = [self.predict_with_expansions(split, expansions) if split != "" else "" for split in splits]
-            output_mod= ". ".join(predictions)
-            out=self.replace_expansions(seq,output_mod,expansions)
+            out= ". ".join(predictions)
+            #out=self.replace_expansions(seq,output_mod,expansions)
         return out
 
 '''
@@ -268,11 +473,18 @@ import json
 
 d=json.load(open("qald_10_resources.json","r"))
 '''
-
-test_str="Angelina her partner Brad and her father Jon"
-EL_model=EL_model("../JointModel/aida-125ep",200)
+'''
+test_str="Barbara Walters stands by Rosie O'Donnell ‘View' host denies Trump's claim she wanted comedian off morning show NEW YORK - Barbara Walters is back from vacation — and she's standing by Rosie O'Donnell in her bitter battle of words with Donald Trump. Walters, creator of ABC's 'The View,' said Wednesday on the daytime chat show that she never told Trump she didn't want O'Donnell on the show, as he has claimed. 'Nothing could be further from the truth,' she said. 'She has brought a new vitality to this show and the ratings prove it,' Walters said of O'Donnell, who is on vacation this week. When she returns, Walters said, 'We will all welcome her back with open arms.' Walters also took a moment to smooth things over with The Donald, who got all riled up when O'Donnell said on 'The View' that he had been 'bankrupt so many times.' 'ABC has asked me to say this just to clarify things, and I will quote: ‘Donald Trump has never filed for personal bankruptcy. Several of his casino companies have filed for business bankruptcies. They are out of bankruptcy now,'' Walters said. O'Donnell and Trump have been feuding since he announced last month that Miss USA Tara Conner, whose title had been in jeopardy because of underage drinking, would keep her crown. Trump is the owner of the Miss Universe Organization, which includes Miss USA and Miss Teen USA. The 44-year-old outspoken moderator of 'The View,' who joined the show in September, said Trump's news conference with Conner had annoyed her 'on a multitude of levels' and that the twice-divorced real estate mogul had no right to be 'the moral compass for 20-year-olds in America.' Trump fired back, calling O'Donnell a 'loser' and a 'bully,' among other insults, in various media interviews. He is the host of NBC's 'The Apprentice"
+EL_model=EL_model("../joint_model/aida-125ep",200,apply_llm_ner=True)
 res=EL_model.predict_e2e(test_str)
 print(res)
+'''
+'''
+test_str="Costa Rica group CocoFunka power this week's Indiesent Exposure http://ht.ly/2G4nS by @fuseboxradio on @planetill"
+EL_model=EL_model("../joint_model/e2e_aida",200,apply_llm_ner=True)
+res=EL_model.predict_el_e2e_exp(test_str)
+print(res)
+'''
 #EL_model.expand("[START_ENT] Angelina [END_ENT] her partner [START_ENT] Brat [END_ENT] and her father [START_ENT] Jon [END_ENT]")
 
 #EL_model.expand("[START_ENT] David [END_ENT] and [START_ENT] Victoria [END_ENT]")
