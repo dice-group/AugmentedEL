@@ -103,7 +103,7 @@ triton==2.3.0
 typing_extensions==4.8.0
 urllib3==1.26.18
 wcwidth==0.2.13
-Werkzeug==3.0.0
+Werkzeug==3.0.6
 Wikipedia-API==0.6.0
 wrapt==1.16.0
 zipp==3.17.0
