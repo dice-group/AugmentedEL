@@ -10,4 +10,5 @@ configure the parameters in the file parameters.py accordingly
 download the content from this ftp folder: https://files.dice-research.org/projects/EL-Context_Augmentation/
 
 run the script webservice.py in the folder experiments. 
-Configure the parameters accordingly the model for the foundational model can be configured by the parameters
+Configure the parameters accordingly espacially the parameter for the according ollama model (--llama_model)
+for detailed parameters see the file parameters.py in the same directory
