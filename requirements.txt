@@ -36,7 +36,7 @@ importlib_resources==6.4.0
 isodate==0.6.1
 itsdangerous==2.1.2
 Janome==0.5.0
-Jinja2==3.1.2
+Jinja2==3.1.5
 jmespath==1.0.1
 joblib==1.4.0
 kiwisolver==1.4.5
