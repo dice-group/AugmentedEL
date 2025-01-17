@@ -8,13 +8,13 @@ import json
 from LLMservice import Local_service
 #from GENRE.genre_disamb import GenreDisamb
 class EL_model():
-    def __init__(self,model_path,max_seq_length,apply_llm_ner=True):
+    def __init__(self,model_path,llm_model,max_seq_length,apply_llm_ner=True):
         self.model = T5ForConditionalGeneration.from_pretrained(model_path)
         self.tokenizer = AutoTokenizer.from_pretrained(
             "t5-base",)
         self.max_seq_length=max_seq_length
-        self.lm_ws=Local_service("llama2:70b")
-        self.device="cuda:1" if torch.cuda.is_available() else "cpu"
+        self.lm_ws=Local_service(llm_model)
+        self.device="cuda:0" if torch.cuda.is_available() else "cpu"
         self.model.to(self.device)
         self.apply_llm_ner=apply_llm_ner
         #self.genre_disamb=GenreDisamb()
@@ -219,8 +219,9 @@ class EL_model():
                 result = re.search(pattern, llm_out)
             print(entities)
             entities.sort(key=len,reverse=True)
-            predictions = [self.predict("Text to annotate: " + split + "[SEP]target_ner", num_beams=num_beams).replace(
-                "Text to annotate: ", "") if split != "" else "" for split in splits]
+            #predictions = [self.predict("Text to annotate: " + split + "[SEP]target_ner", num_beams=num_beams).replace(
+            #    "Text to annotate: ", "") if split != "" else "" for split in splits]
+            predictions=splits
             preditions_update=[]
             for pred_seq in predictions:
                 pred_update=pred_seq

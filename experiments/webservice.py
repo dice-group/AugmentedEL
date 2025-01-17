@@ -17,15 +17,21 @@ from eval_script import EL_model
 from nif import NIFDocument as NIFDocument
 from nif import NIFContent as NIFContent
 from nif_api import lm_output_to_annoation_ner, lm_output_to_annoation_e2e
-#from GENRE.genre_md import GENREAnnotator
+from parameters import ELParser
 
 import pickle
 app = Flask(__name__)
 api = Api(app)
-el_model_e2e=EL_model("../joint_model/e2e_aida",200)
-el_model=EL_model("../joint_model/aida-125ep",200,apply_llm_ner=False)
 
-ge_model=None
+parser = ELParser()
+# args = argparse.Namespace(**params)
+args = parser.parse_args()
+print(args)
+params = args.__dict__
+
+el_model_e2e=EL_model(params["e2e_model_path"],params["llama_model"],200)
+el_model=EL_model(params["joint_model_path"],params["llama_model"],200,apply_llm_ner=True)
+
 from flair.data import Sentence
 from flair.nn import Classifier
 tagger = Classifier.load('ner')
@@ -38,7 +44,7 @@ prefix_allowed_token_fn_ner=el_model.get_pref_allowed_token_fn()
 #agdistis_url = config.get('agdistis', 'agdistis_url')
 #interpreter = Interpreter.load(config.get('rasa', 'rasa_model'), rasa_conf)
 #host = config.get('flask', 'host')
-wikidata_uris=pickle.load(open("../data/wikidata_uris.pkl","rb"))
+wikidata_uris=pickle.load(open(params["wikipedia_dictionary"],"rb"))
 print("finished loading")
 
 def add_nif_entities(reference_context, base_uri, entities, doc):
@@ -246,113 +252,11 @@ def e2e_flair_ner_exp():
 
     return resp
 
-@app.route('/e2e-genre/', methods=['POST'])
-def annotate_nif_string_e2e_genre():
-    string = request.data.decode()
-    #print(string)
-    doc = NIFDocument.nifStringToNifDocument(string)
-    #lm_output=EL_model.predict_ner(doc.nifContent[0].is_string)
-    annotations=ge_model.predict(doc.nifContent[0].is_string,doc.nifContent[0].uri)
-    doc.nifContent.extend(annotations)
-    # replace of comma with whitespace for tokenizer
-    #res = interpreter.parse(doc.nifContent[0].is_string.replace(',', ' ').replace('"', ' ').replace('\\', ''))
-    #app.logger.debug(res)
-
-    #doc = add_nif_entities(doc.nifContent[0].uri, base_uri, res['entities'], doc)
-    app.logger.debug(doc.get_nif_string())
-    resp = make_response(doc.get_nif_string())
-    resp.headers['content'] = 'application/x-turtle'
-
-    return resp
-
-@app.route('/e2econst/', methods=['POST'])
-def annotate_nif_string_e2e_conste2 ():
-    string = request.data.decode()
-    #print(string)
-    doc = NIFDocument.nifStringToNifDocument(string)
-    #lm_output=EL_model.predict_ner(doc.nifContent[0].is_string)
-    lm_output=EL_model.predict_e2e(doc.nifContent[0].is_string,prefix_allowed_token_fn)
-    #print("str_comp")
-    print(doc.nifContent[0].is_string)
-    print(lm_output)
-    annotations=lm_output_to_annoation_e2e(lm_output,doc.nifContent[0].uri,titles_to_wikipedia)
-    doc.nifContent.extend(annotations)
-    # replace of comma with whitespace for tokenizer
-    #res = interpreter.parse(doc.nifContent[0].is_string.replace(',', ' ').replace('"', ' ').replace('\\', ''))
-    #app.logger.debug(res)
-
-    #doc = add_nif_entities(doc.nifContent[0].uri, base_uri, res['entities'], doc)
-    #app.logger.debug(doc.get_nif_string())
-    resp = make_response(doc.get_nif_string())
-    resp.headers['content'] = 'application/x-turtle'
-
-    return resp
 
 
-docs=[]
-@app.route('/get_ds/', methods=['POST'])
-def annotate_nif_string_extract():
-    string = request.data.decode()
-    print(string)
-    doc = NIFDocument.nifStringToNifDocument(string)
-    docs.extend(doc.nifContent)
-    #lm_output=EL_model.predict_ner(doc.nifContent[0].is_string)
-    docnew=NIFDocument.NIFDocument()
-    docnew.nifContent=docs
-    with open("extracted_der","w",encoding="utf-8") as out_file:
-        out_file.write(docnew.get_nif_string())
-    '''
-    lm_output=EL_model.predict_e2e(doc.nifContent[0].is_string)
-    print("str_comp")
-    print(doc.nifContent[0].is_string)
-    print(lm_output)
-    annotations=lm_output_to_annoation_e2e(lm_output,doc.nifContent[0].uri,titles_to_wikipedia)
-    doc.nifContent.extend(annotations)
-    # replace of comma with whitespace for tokenizer
-    #res = interpreter.parse(doc.nifContent[0].is_string.replace(',', ' ').replace('"', ' ').replace('\\', ''))
-    #app.logger.debug(res)
-
-    #doc = add_nif_entities(doc.nifContent[0].uri, base_uri, res['entities'], doc)
-    app.logger.debug(doc.get_nif_string())
-    '''
-    resp = make_response(string)
-    resp.headers['content'] = 'application/x-turtle'
-    return resp
 
 
-'''
-# webservice for recognition and liking
-@app.route('/nifa2kb/', methods=['POST'])
-def annotate_nif_string_Linking():
-    string = request.data.decode()
-    doc = NIFDocument.nifStringToNifDocument(string)
-    app.logger.debug(doc.nifContent[int(doc.get_referenced_contex_id())].is_string)
-    # replace of comma with whitespace for tokenizer
-    #res = interpreter.parse(
-    #    doc.nifContent[int(doc.get_referenced_contex_id())].is_string.replace(',', ' ').replace('"', ' ').replace('\\',
-                                                                                                                  ''))
-    #base_uri = doc.nifContent[0].uri[0:doc.nifContent[0].uri.find('#')]
-    #app.logger.debug(res)
-    #doc = add_nif_entities(doc.nifContent[0].uri, base_uri, res['entities'], doc)
-    # doc.nifContent[int(doc.get_referenced_contex_id())].is_string=doc.nifContent[int(doc.get_referenced_contex_id())].is_string.replace('\\','\\\\')
-    #ag_string = doc.get_nif_string()
-    #app.logger.debug(ag_string)
-    # get links from agdsitis
-    #resp = requests.post(agdistis_url, ag_string.encode('utf-8'))
-    #app.logger.debug(resp.content.decode())
 
-    resp = make_response(resp.content)
-    resp.headers['content'] = 'application/x-turtle'
-    app.logger.debug(resp)
-
-    return resp
-'''
-
-'''
-# tool demo
-@app.route('/')
-def index():
-'''
 
 
 
