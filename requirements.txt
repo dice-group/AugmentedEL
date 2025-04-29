@@ -63,7 +63,7 @@ nvidia-nvjitlink-cu12==12.4.127
 nvidia-nvtx-cu12==12.1.105
 ollama==0.1.9
 packaging==23.2
-Pillow==9.3.0
+Pillow==10.3.0
 pptree==3.1
 protobuf==5.26.1
 psutil==5.9.5
